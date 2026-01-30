@@ -7,7 +7,9 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run build:frontend",
+    "build:backend": "tsc",
+    "build:frontend": "cd frontend && npm install && npm run build",
     "start": "node dist/src/server.js",
     "dev": "ts-node src/server.ts",
     "demo": "ts-node examples/demo.ts",

@@ -1427,6 +1427,34 @@ app.get('/proof-types', (_req: Request, res: Response) => {
 });
 
 // ============================================
+// SERVE FRONTEND (Production)
+// ============================================
+
+// Serve static files from the frontend build directory
+// __dirname in compiled code is dist/src, so go up 2 levels to project root, then into frontend/dist
+const frontendPath = path.resolve(__dirname, '../../frontend/dist');
+app.use(express.static(frontendPath));
+
+// SPA fallback - serve index.html for all non-API routes
+app.get('*', (req: Request, res: Response, next: NextFunction) => {
+  // Skip API routes and docs
+  if (req.path.startsWith('/api') || 
+      req.path.startsWith('/docs') || 
+      req.path.startsWith('/health') ||
+      req.path.startsWith('/cap402') ||
+      req.path.startsWith('/agents') ||
+      req.path.startsWith('/trades') ||
+      req.path.startsWith('/metrics') ||
+      req.path.startsWith('/proofs') ||
+      req.path.startsWith('/reputation') ||
+      req.path.startsWith('/leaderboard') ||
+      req.path.startsWith('/openapi')) {
+    return next();
+  }
+  res.sendFile(path.join(frontendPath, 'index.html'));
+});
+
+// ============================================
 // ERROR HANDLING
 // ============================================
 
