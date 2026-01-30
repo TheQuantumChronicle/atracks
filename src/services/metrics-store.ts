@@ -37,14 +37,10 @@ async function initDatabase() {
       return;
     }
     
-    // Import pg adapter for Prisma 7
-    const { PrismaClient } = await import('@prisma/client');
-    const { PrismaPg } = await import('@prisma/adapter-pg');
-    const { Pool } = await import('pg');
-    
-    const pool = new Pool({ connectionString: databaseUrl });
-    const adapter = new PrismaPg(pool);
-    prisma = new PrismaClient({ adapter });
+    // Import Prisma client (v6 - standard approach)
+    const prismaModule = await import('@prisma/client');
+    const PrismaClient = prismaModule.PrismaClient;
+    prisma = new PrismaClient();
     
     // Test the connection
     await prisma.$queryRaw`SELECT 1`;
