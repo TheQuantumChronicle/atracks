@@ -135,7 +135,7 @@ export function Dashboard() {
   const hasAgents = agents.length > 0;
 
   return (
-    <div className="relative z-10 h-full flex flex-col justify-center py-4 md:py-0">
+    <div className="relative z-10 h-full flex flex-col justify-center pt-16 md:pt-24 pb-4">
       {/* Animated background - branded gradient orbs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         {/* Primary accent orb - top left */}
