@@ -1,0 +1,104 @@
+// Prisma schema for ATRACKS - Private Agent Reputation System
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Agent identity
+model Agent {
+  id         String   @id @default(uuid())
+  name       String
+  apiKey     String   @unique @map("api_key")
+  publicKey  String?  @map("public_key")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  metrics    Metrics?
+  trades     Trade[]
+  proofs     Proof[]
+  reputation Reputation?
+
+  @@map("agents")
+}
+
+// Performance metrics (encrypted via Inco FHE in production)
+model Metrics {
+  id                 String   @id @default(uuid())
+  agentId            String   @unique @map("agent_id")
+  totalTrades        Int      @default(0) @map("total_trades")
+  winningTrades      Int      @default(0) @map("winning_trades")
+  totalPnlUsd        Float    @default(0) @map("total_pnl_usd")
+  maxDrawdownBps     Int      @default(0) @map("max_drawdown_bps")
+  sharpeRatio        Float    @default(0) @map("sharpe_ratio")
+  avgExecutionTimeMs Float    @default(0) @map("avg_execution_time_ms")
+  uptimePercentage   Float    @default(100) @map("uptime_percentage")
+  encryptedData      String?  @map("encrypted_data")
+  encryptionProof    String?  @map("encryption_proof")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@map("metrics")
+}
+
+// Trade records
+model Trade {
+  id              String   @id @default(uuid())
+  agentId         String   @map("agent_id")
+  tokenIn         String   @default("SOL") @map("token_in")
+  tokenOut        String   @default("USDC") @map("token_out")
+  amountIn        Float    @default(0) @map("amount_in")
+  amountOut       Float    @default(0) @map("amount_out")
+  pnlUsd          Float    @map("pnl_usd")
+  executionTimeMs Int      @map("execution_time_ms")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relations
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
+  @@map("trades")
+}
+
+// ZK Proofs generated via Noir
+model Proof {
+  id               String   @id @default(uuid())
+  agentId          String   @map("agent_id")
+  proofType        String   @map("proof_type")
+  proof            String
+  verificationKey  String   @map("verification_key")
+  publicInputs     Json     @map("public_inputs")
+  publicOutputs    Json?    @map("public_outputs")
+  verified         Boolean  @default(false)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  // Relations
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
+  @@map("proofs")
+}
+
+// Verified reputation (computed via Arcium MPC)
+model Reputation {
+  id               String   @id @default(uuid())
+  agentId          String   @unique @map("agent_id")
+  score            Int      @default(0)
+  tier             String   @default("unverified")
+  badges           Json     @default("[]")
+  mpcComputationId String?  @map("mpc_computation_id")
+  mpcAttestation   String?  @map("mpc_attestation")
+  verifiedAt       DateTime @default(now()) @map("verified_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@map("reputations")
+}

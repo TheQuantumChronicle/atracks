@@ -5,7 +5,7 @@
 
 import { createAtracksClient } from '../src/sdk';
 
-const ATRACKS_URL = process.env.ATRACKS_URL || 'http://localhost:3002';
+const ATRACKS_URL = process.env.ATRACKS_URL || 'https://api.atracks.xyz';
 
 async function demo() {
   console.log(`

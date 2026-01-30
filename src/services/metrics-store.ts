@@ -1,10 +1,12 @@
 /**
  * Encrypted Metrics Store
- * Uses Inco FHE via CAP-402 for encrypted storage
+ * Uses PostgreSQL via Prisma with in-memory fallback
+ * Inco FHE via CAP-402 for encrypted storage
  */
 
 import { v4 as uuidv4 } from 'uuid';
 import { cap402Client } from '../cap402/client';
+import { hashApiKey, verifyApiKey } from '../utils/security';
 import { 
   PerformanceMetrics, 
   EncryptedMetrics, 
@@ -12,25 +14,149 @@ import {
   Agent 
 } from '../types';
 
-// In-memory store (production would use encrypted database)
-const agentStore = new Map<string, Agent>();
+// Extended agent type with hashed key for internal storage
+interface StoredAgent extends Agent {
+  api_key_hash?: string;
+}
+
+// In-memory fallback store (used when DB unavailable)
+const agentStore = new Map<string, StoredAgent>();
 const encryptedMetricsMap = new Map<string, EncryptedMetrics>();
-const rawMetricsStore = new Map<string, PerformanceMetrics>(); // For demo - encrypted in production
+const rawMetricsStore = new Map<string, PerformanceMetrics>();
+
+// Database imports (optional - graceful fallback)
+let prisma: any = null;
+let useDatabase = false;
+
+// Try to load Prisma
+async function initDatabase() {
+  try {
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      console.log('⚠️ DATABASE_URL not set - using in-memory storage');
+      return;
+    }
+    
+    // Import pg adapter for Prisma 7
+    const { PrismaClient } = await import('@prisma/client');
+    const { PrismaPg } = await import('@prisma/adapter-pg');
+    const { Pool } = await import('pg');
+    
+    const pool = new Pool({ connectionString: databaseUrl });
+    const adapter = new PrismaPg(pool);
+    prisma = new PrismaClient({ adapter });
+    
+    // Test the connection
+    await prisma.$queryRaw`SELECT 1`;
+    useDatabase = true;
+    console.log('✅ PostgreSQL connected - using persistent storage');
+    
+    // Load existing data from database into memory cache
+    await loadFromDatabase();
+  } catch (error: any) {
+    console.log('⚠️ PostgreSQL unavailable - using in-memory storage');
+    console.log(`   Reason: ${error?.message || String(error)}`);
+    useDatabase = false;
+  }
+}
+
+// Load existing agents and metrics from database
+async function loadFromDatabase() {
+  if (!prisma) return;
+  
+  try {
+    const agents = await prisma.agent.findMany({
+      include: { metrics: true }
+    });
+    
+    for (const dbAgent of agents) {
+      // Load agent into memory with hashed key
+      const storedAgent: StoredAgent = {
+        agent_id: dbAgent.id,
+        name: dbAgent.name,
+        api_key: '[HASHED]',
+        api_key_hash: dbAgent.apiKey, // DB stores the hash
+        public_key: dbAgent.publicKey || undefined,
+        created_at: dbAgent.createdAt.getTime()
+      };
+      agentStore.set(storedAgent.agent_id, storedAgent);
+      
+      // Load metrics into memory
+      if (dbAgent.metrics) {
+        const metrics: PerformanceMetrics = {
+          total_trades: dbAgent.metrics.totalTrades,
+          winning_trades: dbAgent.metrics.winningTrades,
+          total_pnl_usd: dbAgent.metrics.totalPnlUsd,
+          max_drawdown_bps: dbAgent.metrics.maxDrawdownBps,
+          sharpe_ratio: dbAgent.metrics.sharpeRatio,
+          avg_execution_time_ms: dbAgent.metrics.avgExecutionTimeMs,
+          uptime_percentage: dbAgent.metrics.uptimePercentage,
+          last_updated: dbAgent.metrics.updatedAt.getTime()
+        };
+        rawMetricsStore.set(storedAgent.agent_id, metrics);
+      }
+    }
+    
+    console.log(`   Loaded ${agents.length} agents from database`);
+  } catch (error: any) {
+    console.log(`   Failed to load from database: ${error?.message}`);
+  }
+}
+
+// Initialize on module load
+initDatabase().catch((err) => {
+  console.log('Database init error:', err);
+});
 
 class MetricsStoreService {
   
   /**
    * Register a new agent
+   * Returns the agent with raw API key (only time it's visible)
    */
   async registerAgent(name: string, publicKey?: string): Promise<Agent> {
+    const agentId = uuidv4();
+    const rawApiKey = `atk_${uuidv4().replace(/-/g, '')}`;
+    
+    // Hash the API key for storage
+    const apiKeyHash = await hashApiKey(rawApiKey);
+    
+    // Agent returned to user (with raw key - only shown once)
     const agent: Agent = {
-      agent_id: uuidv4(),
+      agent_id: agentId,
       name,
       created_at: Date.now(),
-      public_key: publicKey
+      public_key: publicKey,
+      api_key: rawApiKey // Raw key returned to user once
     };
 
-    agentStore.set(agent.agent_id, agent);
+    // Agent stored internally (with hashed key)
+    const storedAgent: StoredAgent = {
+      ...agent,
+      api_key: '[HASHED]', // Don't store raw key
+      api_key_hash: apiKeyHash
+    };
+
+    // Try database first - store hashed key
+    if (useDatabase && prisma) {
+      try {
+        await prisma.agent.create({
+          data: {
+            id: agentId,
+            name,
+            apiKey: apiKeyHash, // Store hash, not raw key
+            publicKey,
+            metrics: { create: {} }
+          }
+        });
+        console.log(`✅ Agent ${name} saved to database (key hashed)`);
+      } catch (error) {
+        console.log('⚠️ Database write failed, using memory');
+      }
+    }
+
+    // Always store in memory as cache/fallback (with hash)
+    agentStore.set(agent.agent_id, storedAgent);
     
     // Initialize empty metrics
     const initialMetrics: PerformanceMetrics = {
@@ -61,7 +187,7 @@ class MetricsStoreService {
         encrypted_data: encrypted.encrypted_data,
         encryption_proof: encrypted.encryption_proof,
         last_updated: Date.now(),
-        mode: encrypted.mode as 'live' | 'simulation'
+        mode: (encrypted.mode === 'live' ? 'live' : 'computed') as 'live' | 'computed'
       });
       console.log(`✅ FHE encryption successful - mode: ${encrypted.mode}`);
     } catch (error: any) {
@@ -76,7 +202,12 @@ class MetricsStoreService {
    * Get agent by ID
    */
   getAgent(agentId: string): Agent | undefined {
-    return agentStore.get(agentId);
+    // Check memory first
+    const memAgent = agentStore.get(agentId);
+    if (memAgent) return memAgent;
+
+    // Could add async DB lookup here if needed
+    return undefined;
   }
 
   /**
@@ -84,6 +215,16 @@ class MetricsStoreService {
    */
   getAllAgents(): Agent[] {
     return Array.from(agentStore.values());
+  }
+
+  /**
+   * Validate API key for an agent - returns true if valid
+   * Uses bcrypt constant-time comparison to prevent timing attacks
+   */
+  async validateApiKey(agentId: string, apiKey: string): Promise<boolean> {
+    const agent = agentStore.get(agentId);
+    if (!agent || !agent.api_key_hash) return false;
+    return verifyApiKey(apiKey, agent.api_key_hash);
   }
 
   /**
@@ -113,39 +254,68 @@ class MetricsStoreService {
 
     // Track drawdown
     if (trade.pnl_usd < 0) {
-      const drawdownBps = Math.abs(trade.pnl_usd / 100) * 100;
-      if (drawdownBps > metrics.max_drawdown_bps) {
-        metrics.max_drawdown_bps = drawdownBps;
-      }
+      const drawdownBps = Math.abs(trade.pnl_usd * 100);
+      metrics.max_drawdown_bps = Math.max(metrics.max_drawdown_bps, Math.round(drawdownBps));
     }
 
     metrics.last_updated = Date.now();
-    rawMetricsStore.set(trade.agent_id, metrics);
 
-    // Update encrypted metrics via Inco FHE
+    // Save to database if available
+    if (useDatabase && prisma) {
+      try {
+        await prisma.trade.create({
+          data: {
+            agentId: trade.agent_id,
+            tokenIn: trade.token_in,
+            tokenOut: trade.token_out,
+            amountIn: trade.amount_in,
+            amountOut: trade.amount_out,
+            pnlUsd: trade.pnl_usd,
+            executionTimeMs: trade.execution_time_ms
+          }
+        });
+        
+        await prisma.metrics.update({
+          where: { agentId: trade.agent_id },
+          data: {
+            totalTrades: metrics.total_trades,
+            winningTrades: metrics.winning_trades,
+            totalPnlUsd: metrics.total_pnl_usd,
+            avgExecutionTimeMs: metrics.avg_execution_time_ms,
+            sharpeRatio: metrics.sharpe_ratio,
+            maxDrawdownBps: metrics.max_drawdown_bps
+          }
+        });
+      } catch (error) {
+        console.log('⚠️ Database write failed for trade');
+      }
+    }
+
+    // Update encrypted metrics via FHE
     try {
-      const encrypted = await cap402Client.encryptMetrics({
-        total_trades: metrics.total_trades,
-        winning_trades: metrics.winning_trades,
-        total_pnl_usd: metrics.total_pnl_usd
-      });
-
-      encryptedMetricsMap.set(trade.agent_id, {
-        agent_id: trade.agent_id,
-        encrypted_data: encrypted.encrypted_data,
-        encryption_proof: encrypted.encryption_proof,
-        last_updated: Date.now(),
-        mode: encrypted.mode as 'live' | 'simulation'
-      });
+      const existingEncrypted = encryptedMetricsMap.get(trade.agent_id);
+      if (existingEncrypted?.encrypted_data) {
+        const result = await cap402Client.addEncryptedPnL(
+          existingEncrypted.encrypted_data,
+          trade.pnl_usd
+        );
+        
+        encryptedMetricsMap.set(trade.agent_id, {
+          ...existingEncrypted,
+          encrypted_data: result.encrypted_result,
+          encryption_proof: result.proof,
+          last_updated: Date.now()
+        });
+      }
     } catch (error) {
-      console.log('⚠️  FHE update unavailable');
+      // FHE update failed - continue with local metrics
     }
 
     return metrics;
   }
 
   /**
-   * Get raw metrics (only for the agent itself - private)
+   * Get raw metrics for an agent
    */
   getMetrics(agentId: string): PerformanceMetrics | undefined {
     return rawMetricsStore.get(agentId);
@@ -177,6 +347,30 @@ class MetricsStoreService {
       name: agent.name,
       tier: 'unverified' // Tier comes from verified reputation
     }));
+  }
+
+  /**
+   * Get aggregate stats for CAP-402 status
+   */
+  getStats(): { totalAgents: number; totalTrades: number; totalProofs: number; totalVerifications: number } {
+    let totalTrades = 0;
+    rawMetricsStore.forEach(metrics => {
+      totalTrades += metrics.total_trades;
+    });
+    
+    return {
+      totalAgents: agentStore.size,
+      totalTrades,
+      totalProofs: 0, // Will be tracked by reputation service
+      totalVerifications: 0
+    };
+  }
+
+  /**
+   * Check if database is connected
+   */
+  isDatabaseConnected(): boolean {
+    return useDatabase;
   }
 }
 

@@ -24,7 +24,7 @@ export class AtracksClient {
 
   constructor(config: AtracksConfig = {}) {
     this.client = axios.create({
-      baseURL: config.baseUrl || 'http://localhost:3002',
+      baseURL: config.baseUrl || 'https://api.atracks.xyz',
       timeout: config.timeout || 30000,
       headers: { 'Content-Type': 'application/json' }
     });

@@ -46,7 +46,7 @@ npm start
 npm run dev
 ```
 
-Server runs at `http://localhost:3002`
+Server runs at `http://localhost:3002` (dev) or `https://api.atracks.xyz` (production)
 
 ### 4. Run Demo
 
@@ -109,7 +109,11 @@ npm run demo
 ```typescript
 import { createAtracksClient } from './src/sdk';
 
-const client = createAtracksClient('http://localhost:3002');
+// Production (default)
+const client = createAtracksClient();
+
+// Or specify URL explicitly
+// const client = createAtracksClient('https://api.atracks.xyz');
 
 // Register agent
 const agent = await client.registerAgent('MyTradingBot');
@@ -207,14 +211,20 @@ console.log(`Badges: ${reputation.badges.length}`);
 
 ```bash
 # CAP-402 Router URL
-CAP402_ROUTER_URL=http://localhost:3001
+CAP402_ROUTER_URL=https://cap402.com
 
 # Server Configuration
 PORT=3002
-HOST=localhost
+HOST=0.0.0.0
 
 # Environment
-NODE_ENV=development
+NODE_ENV=production
+
+# PostgreSQL Database (Railway provides this automatically)
+DATABASE_URL=postgresql://user:password@host:5432/atracks
+
+# CORS Origins
+CORS_ORIGINS=https://atracks.xyz,https://www.atracks.xyz,https://api.atracks.xyz
 ```
 
 ---

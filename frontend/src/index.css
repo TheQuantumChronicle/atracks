@@ -1,0 +1,126 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #ffffff;
+  --color-primary-dark: #f0f0f0;
+  --color-accent: #818cf8;
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+  --color-bg-dark: #030305;
+  --color-bg-card: #0a0a0f;
+  --color-bg-card-hover: #0f0f16;
+  --color-border: #1a1a24;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #475569;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: #030305;
+  color: #ffffff;
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+  position: relative;
+  background: radial-gradient(circle at 50% -20%, #1e1b4b 0%, #030305 70%);
+}
+
+/* Luxury Interstellar effect v7 - Character & Depth */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(1.5px 1.5px at 10% 10%, rgba(255,255,255,0.1), transparent),
+    radial-gradient(1px 1px at 20% 40%, rgba(255,255,255,0.05), transparent),
+    radial-gradient(1.2px 1.2px at 50% 20%, rgba(255,255,255,0.08), transparent),
+    radial-gradient(1px 1px at 80% 50%, rgba(255,255,255,0.04), transparent),
+    radial-gradient(2px 2px at 90% 90%, rgba(255,255,255,0.06), transparent),
+    radial-gradient(1px 1px at 70% 30%, rgba(255,255,255,0.04), transparent),
+    radial-gradient(1.5px 1.5px at 30% 80%, rgba(255,255,255,0.08), transparent);
+  background-repeat: repeat;
+  background-size: 100vw 100vh;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.5;
+  animation: starsTwinkle 12s ease-in-out infinite alternate;
+}
+
+@keyframes starsTwinkle {
+  from { opacity: 0.3; transform: scale(1); }
+  to { opacity: 0.6; transform: scale(1.02); }
+}
+
+/* Sophisticated Nebula Ambient Glows */
+#root::after {
+  content: '';
+  position: fixed;
+  top: 40%;
+  right: -10%;
+  width: 50%;
+  height: 50%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.06) 0%, transparent 70%);
+  filter: blur(120px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Glass Morphism Base */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 30px rgba(99, 102, 241, 0.05);
+}
+
+.glass-panel:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 30px rgba(99, 102, 241, 0.1);
+}
+
+/* Refined transitions */
+* {
+  transition-property: background-color, border-color, color, opacity, transform, box-shadow;
+  transition-duration: 400ms;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Custom selection */
+::selection {
+  background: rgba(99, 102, 241, 0.3);
+  color: #ffffff;
+}
+
+/* Minimalist scrollbar */
+::-webkit-scrollbar {
+  width: 3px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(124, 58, 237, 0.1);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 58, 237, 0.2);
+}

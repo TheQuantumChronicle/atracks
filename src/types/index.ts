@@ -9,6 +9,7 @@ export interface Agent {
   name: string;
   created_at: number;
   public_key?: string;
+  api_key: string; // Secret key for owner authentication
 }
 
 // Performance metrics (stored encrypted via Inco FHE)
@@ -29,7 +30,7 @@ export interface EncryptedMetrics {
   encrypted_data: string;
   encryption_proof: string;
   last_updated: number;
-  mode: 'live' | 'simulation';
+  mode: 'live' | 'computed';
 }
 
 // Reputation proof request

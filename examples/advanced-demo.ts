@@ -12,7 +12,7 @@
 import { cap402Client } from '../src/cap402/client';
 import axios from 'axios';
 
-const ATRACKS_URL = 'http://localhost:3002';
+const ATRACKS_URL = process.env.ATRACKS_URL || 'https://api.atracks.xyz';
 
 // Real Solana wallets for testing
 const TEST_WALLETS = [
