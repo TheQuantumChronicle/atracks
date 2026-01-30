@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { Book, ExternalLink, Zap, FileJson, ArrowUpRight } from 'lucide-react';
 
 export function Docs() {
-  const apiBaseUrl = import.meta.env.VITE_API_URL || 'https://api.atracks.xyz';
+  const apiBaseUrl = import.meta.env.VITE_API_URL || '';
 
   const openSwagger = () => {
     window.open(`${apiBaseUrl}/docs`, '_blank', 'noopener,noreferrer');

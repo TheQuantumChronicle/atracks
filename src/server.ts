@@ -52,7 +52,7 @@ app.use((req, res, next) => {
         scriptSrc: ["'self'", "'unsafe-inline'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", 'data:', 'https:'],
-        connectSrc: ["'self'", 'https://atracks.xyz'],
+        connectSrc: ["'self'", 'https://atracks.xyz', 'https://api.atracks.xyz', 'https://www.atracks.xyz'],
         fontSrc: ["'self'", 'https:'],
         objectSrc: ["'none'"],
         mediaSrc: ["'self'"],

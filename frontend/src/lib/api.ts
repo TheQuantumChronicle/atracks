@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Production API URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.atracks.xyz';
+// Use relative URL since frontend and backend are served from the same origin
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
