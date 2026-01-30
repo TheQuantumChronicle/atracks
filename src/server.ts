@@ -1443,7 +1443,8 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 // START SERVER
 // ============================================
 
-const server = app.listen(PORT, () => {
+const HOST = process.env.HOST || '0.0.0.0';
+const server = app.listen(Number(PORT), HOST, () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║                                                           ║
