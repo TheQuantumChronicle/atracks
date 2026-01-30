@@ -27,13 +27,9 @@ async function initReputationDb() {
     const databaseUrl = process.env.DATABASE_URL;
     if (!databaseUrl) return;
     
-    const { PrismaClient } = await import('@prisma/client');
-    const { PrismaPg } = await import('@prisma/adapter-pg');
-    const { Pool } = await import('pg');
-    
-    const pool = new Pool({ connectionString: databaseUrl });
-    const adapter = new PrismaPg(pool);
-    prisma = new PrismaClient({ adapter });
+    const prismaModule = await import('@prisma/client');
+    const PrismaClient = prismaModule.PrismaClient;
+    prisma = new PrismaClient();
     
     // Load existing reputations from database
     const reputations = await prisma.reputation.findMany({
