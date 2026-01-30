@@ -1,8 +1,7 @@
 import axios from 'axios';
 
-// In production, use the deployed backend URL
-// In development, Vite proxy handles /api -> localhost:3002
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+// Production API URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.atracks.xyz';
 
 const api = axios.create({
   baseURL: API_BASE_URL,

@@ -58,10 +58,6 @@ Rate limit headers are included in all responses:
       {
         url: 'https://api.atracks.xyz',
         description: 'Production'
-      },
-      {
-        url: 'http://localhost:3002',
-        description: 'Development'
       }
     ],
     tags: [

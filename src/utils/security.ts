@@ -207,14 +207,11 @@ export function checkRateLimit(
 export function getCorsOrigins(): string[] {
   const origins = process.env.CORS_ORIGINS;
   if (!origins) {
-    // Default origins - production domain + localhost for development
+    // Default origins - production domains only
     return [
       'https://atracks.xyz',
       'https://www.atracks.xyz',
-      'https://api.atracks.xyz',
-      'http://localhost:5173',
-      'http://localhost:3000',
-      'http://127.0.0.1:5173'
+      'https://api.atracks.xyz'
     ];
   }
   return origins.split(',').map(o => o.trim());

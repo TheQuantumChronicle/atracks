@@ -46,7 +46,7 @@ npm start
 npm run dev
 ```
 
-Server runs at `http://localhost:3002` (dev) or `https://api.atracks.xyz` (production)
+Server runs at `https://api.atracks.xyz`
 
 ### 4. Run Demo
 
